@@ -50,6 +50,7 @@ class nr_driver:
         header = "STX".encode()
         tail = "\r\n".encode()
         cmd_speed = cmd_speed
+        cmd_brake = cmd_brake
         data = struct.pack(
             ">BBBHhBB",
             cmd_mode,
@@ -61,9 +62,8 @@ class nr_driver:
             cmd_alive,
         )
         packet = header + data + tail
-        if debug :
-            print(packet)
-            print("---sent to NR---- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake)
+        print(packet)
+        print("---sent to NR---- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake)
         self.ser.write(packet)
         self.ser.flushOutput()
         
@@ -132,7 +132,7 @@ class nr_driver:
         recv_status.enc = enc
         recv_status.batt = batt
         recv_status.alive = alive
-        # print(mode,e_stop,gear,speed,steer,brake,enc,batt,alive)
+        print(mode,e_stop,gear,speed,steer,brake,enc,batt,alive)
         self.nr_status_pub.publish(recv_status)
 #-----------------------------------------------------------------------
 #=======================================================================

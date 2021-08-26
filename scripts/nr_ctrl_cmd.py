@@ -12,7 +12,8 @@ import rospkg
 import message_filters
 
 debug = 0
-packet = [0 for i in range(7)]  # creat array for packet
+#packet = [0 for i in range(7)]  # creat array for packet
+#cmd_packet = [0 for i in range(7)]  # creat array for packet
 
 
 class nr_serial_test: 
@@ -23,11 +24,11 @@ class nr_serial_test:
         
     def cmd_vel_to_nr_driver(self, cmd_vel) :
         
-        #print(cmd_vel.angular.z)
         if debug :
             rospy.loginfo(" ROS cmd_vel data convertion")
-            rospy.info(str(cmd_vel))
-            # ---- NR controller mode ------		
+            print(cmd_vel.angular.z)
+        
+        # ---- NR controller mode ------
         cmd_mode = 1  		# set mode to 1 = Auto/computer control (O = manual mode for the black controller)
         
         # ---- NR eStop state ------
@@ -39,7 +40,7 @@ class nr_serial_test:
         # safe state is "neutral" where NR will roll if push or under inertia
         # "cmd_vel.linear.x" is being used for both speed and direction to stay in ROS norms
         if cmd_vel.linear.x > 0.01 :
-             cmd_gear = 0 				# Drive
+            cmd_gear = 0 				# Drive
         elif cmd_vel.linear.x < -0.01 :
             cmd_gear = 3				# Reverse
             cmd_vel.linear.x = not cmd_vel.linear.x
@@ -85,7 +86,7 @@ class nr_serial_test:
 #-----------------------------------------------------------------------
 
 #=======================================================================
-    def pub_cmd(self, serial_msg_hz, mode, e_stop, gear, speed, steer, brake) :
+    def pub_cmd(self, serial_msg_hz, mode, e_stop, gear, speed, steer, brake, alive) :
         ctrl_msg = CtrlCmd() 
         
         ctrl_msg.serial_msg_hz = serial_msg_hz
@@ -95,7 +96,7 @@ class nr_serial_test:
         ctrl_msg.speed = speed
         ctrl_msg.steer = steer
         ctrl_msg.brake = brake
-        ctrl_msg.alive = self.alive
+        ctrl_msg.alive = alive
         
         self.nr_cmd_pub.publish(ctrl_msg)
 #-----------------------------------------------------------------------      
@@ -124,61 +125,58 @@ class nr_serial_test:
         
 #=======================================================================
     def sub_recv_status(self,RecvStatus) :
-        #print("--------------------status(sub)--------------------")
-        #print("recv_status(mode) : {}".format(RecvStatus.mode))
-        #print("recv_status(e_stop) : {}".format(RecvStatus.e_stop))
-        #print("recv_status(gear) : {}".format(RecvStatus.gear))
-        #print("recv_status(speed) : {}".format(RecvStatus.speed))
-        #print("recv_status(steer) : {}".format(RecvStatus.steer))
-        #print("recv_status(brake) : {}".format(RecvStatus.brake))
-        #print("recv_status(enc) : {}".format(RecvStatus.enc))
-        #print("recv_status(batt) : {}".format(RecvStatus.batt))
-        #print("recv_status(alive) : {}".format(RecvStatus.alive))
-        #print("---------------------------------------------------\n")
+        print("--------------------status(sub)--------------------")
+        print("recv_status(mode) : {}".format(RecvStatus.mode))
+        print("recv_status(e_stop) : {}".format(RecvStatus.e_stop))
+        print("recv_status(gear) : {}".format(RecvStatus.gear))
+        print("recv_status(speed) : {}".format(RecvStatus.speed))
+        print("recv_status(steer) : {}".format(RecvStatus.steer))
+        print("recv_status(brake) : {}".format(RecvStatus.brake))
+        print("recv_status(enc) : {}".format(RecvStatus.enc))
+        print("recv_status(batt) : {}".format(RecvStatus.batt))
+        print("recv_status(alive) : {}".format(RecvStatus.alive))
+        print("---------------------------------------------------\n")
         return
 #-----------------------------------------------------------------------
 
 #=======================================================================
     def main_loop(self, serial_msg_hz) :
         
-        if debug: print(serial_msg_hz)
+        print(serial_msg_hz)
         
-        rate = rospy.Rate(20)
+        rate = rospy.Rate(30)
         t_offset = time.time()
-        t_prev = 0.0
-        t = 0.0
+
         self.alive = 0
         while not rospy.is_shutdown(): 
-            t = time.time() - t_offset
-            t_elapsed = t - t_prev
- 
-            if t_elapsed > serial_msg_hz:               
-                t_prev = t
+           t = time.time() - t_offset
                 
-                cmd_packet = self.cmd_vel_to_nr_driver(self.cmd_vel_from_ros)
+           cmd_packet = self.cmd_vel_to_nr_driver(self.cmd_vel_from_ros)
                 
-                self.pub_cmd(
-                    serial_msg_hz,
-                    cmd_packet[0],
-                    cmd_packet[1],
-                    cmd_packet[2],
-                    cmd_packet[3],
-                    cmd_packet[4],
-                    cmd_packet[5],
-                )
-               
-                self.alive = self.alive + 1
-                if self.alive == 256:
-                    self.alive = 1
-                    print("----------- Alive reset to: ", self.alive, " time now: ", t)
-            rate.sleep()
+           self.pub_cmd(
+                serial_msg_hz,
+                cmd_packet[0],
+                cmd_packet[1],
+                cmd_packet[2],
+                cmd_packet[3],
+                cmd_packet[4],
+                cmd_packet[5],
+                self.alive)
+           
+           self.alive = self.alive + 1
+           
+           # print(" time now: ", t)
+           if self.alive == 254:
+               self.alive = 1
+               # print("----------- Alive reset -- time now: ", t)
+           rate.sleep()
 #----------------------------------------------------------------------- 
 
 #=======================================================================
     def __init__(self):
         #self.test_case = test_case()
         rospy.init_node("nr_cmd", anonymous=True)
-        self.serial_msg_hz = rospy.get_param('~serial_msg_hz', 1/20)
+        self.serial_msg_hz = rospy.get_param('~serial_msg_hz', 0.1)
         self.scaler_nr_speed = rospy.get_param('~speed_scaler', 125)  	# 1000 / Max speed(8.2m/s) 
         
         self.cmd_vel_msg = Twist()
