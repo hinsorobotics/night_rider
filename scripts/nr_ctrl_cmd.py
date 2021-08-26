@@ -14,12 +14,14 @@ import message_filters
 debug = 0
 packet = [0 for i in range(7)]  # creat array for packet
 
+
 class nr_serial_test: 
 #=======================================================================
     def cmd_vel_callback(self, cmd_vel) :
         
-        #rospy.loginfo(" ROS CALL BACK RECIVED ")
-        #rospy.info(str(cmd_vel))
+        if debug :
+            rospy.loginfo(" ROS CALL BACK RECIVED ")
+            rospy.info(str(cmd_vel))
 				
 		# ---- NR controller mode ------		
         cmd_mode = 1  		# set mode to 1 = Auto/computer control (O = manual mode for the black controller)
