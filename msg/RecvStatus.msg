@@ -1,0 +1,9 @@
+uint8 mode
+uint8 e_stop
+uint8 gear
+float64 speed
+float64 steer
+uint16 brake
+float64 enc
+uint16 batt
+uint8 alive

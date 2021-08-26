@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="night_rider" type="nr_ctrl_cmd.py" name="nr_test" output="screen" />
+
+	<node pkg="night_rider" type="nr_driver.py" name="nr_driver" output="screen" />
+</launch>
