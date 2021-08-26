@@ -61,11 +61,14 @@ class nr_driver:
             cmd_alive,
         )
         packet = header + data + tail
-        print(packet)
+        if debug :
+            print(packet)
+            print("---sent to NR---- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake)
         self.ser.write(packet)
         self.ser.flushOutput()
+        
         return
-        # return cmd_mode, cmd_e_stop, cmd_gear, cmd_speed, cmd_steer, cmd_brake
+        
 #-----------------------------------------------------------------------
 #=======================================================================
     def recv_serial_data(self):

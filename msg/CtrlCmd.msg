@@ -1,4 +1,3 @@
-uint8 test_case
 float64 serial_msg_hz
 uint8 mode
 uint8 e_stop
