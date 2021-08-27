@@ -13,6 +13,7 @@ import struct
 import time
 
 debug = 0
+debug1 = 0
 
 
 class nr_driver:    
@@ -49,8 +50,6 @@ class nr_driver:
     def send_ctrl_cmd(self, cmd_mode, cmd_e_stop, cmd_gear, cmd_speed, cmd_steer, cmd_brake, cmd_alive):
         header = "STX".encode()
         tail = "\r\n".encode()
-        cmd_speed = cmd_speed
-        cmd_brake = cmd_brake
         data = struct.pack(
             ">BBBHhBB",
             cmd_mode,
@@ -62,16 +61,17 @@ class nr_driver:
             cmd_alive,
         )
         packet = header + data + tail
-        print(packet)
-        print("---sent to NR---- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake)
+        if debug :
+            print(packet)
+            print("---sent to NR---- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake, "  alive: ", cmd_alive )
         self.ser.write(packet)
-        self.ser.flushOutput()
-        
+        #self.ser.flushOutput() 
         return
         
 #-----------------------------------------------------------------------
 #=======================================================================
     def recv_serial_data(self):
+        self.ser.flushInput()
         while True:
             packet = self.ser.readline()
             if not len(packet) == 20:
@@ -84,9 +84,11 @@ class nr_driver:
                 elif len(packet) == 20:
                     fmt = "<BBBBBBhhBfHBBB"  # nr platform
                     # fmt = ">BBBBBBhhBfHBBB"  # serial test
+
                 data = struct.unpack(fmt, packet)
                 header = packet[0:3].decode()
-                if header == "STX":
+
+                if header == "STX": 
                     status_mode = data[3]
                     status_e_stop = data[4]
                     status_gear = data[5]
@@ -96,28 +98,11 @@ class nr_driver:
                     status_enc = data[9]
                     status_batt = data[10]
                     status_alive = data[11]
-                    recv_packet = [
-                        status_mode,
-                        status_e_stop,
-                        status_gear,
-                        status_speed,
-                        status_steer,
-                        status_brake,
-                        status_enc,
-                        status_batt,
-                        status_alive,
-                    ]
-                    self.pub_status(
-                        status_mode,
-                        status_e_stop,
-                        status_gear,
-                        status_speed,
-                        status_steer,
-                        status_brake,
-                        status_enc,
-                        status_batt,
-                        status_alive,
-                    )
+                    
+                    recv_packet = [ status_mode, status_e_stop, status_gear, status_speed, status_steer, status_brake, status_enc, status_batt, status_alive]
+                    
+                    self.pub_status( status_mode, status_e_stop, status_gear, status_speed, status_steer, status_brake, status_enc, status_batt, status_alive)
+
                     return recv_packet
 #-----------------------------------------------------------------------
 #=======================================================================
@@ -132,7 +117,7 @@ class nr_driver:
         recv_status.enc = enc
         recv_status.batt = batt
         recv_status.alive = alive
-        print(mode,e_stop,gear,speed,steer,brake,enc,batt,alive)
+        if debug1 : print("---Rec from NR--- mode: ", mode, "  stop: ", e_stop, "  gear: ", gear, "  speed: ", speed, "  steer ", steer, "  brake: ", brake, "  battery: ", float(batt)/10, "  alive: ",alive)
         self.nr_status_pub.publish(recv_status)
 #-----------------------------------------------------------------------
 #=======================================================================
@@ -179,23 +164,26 @@ class nr_driver:
 
 #=======================================================================	
     def main_loop(self):
-        self.nr_cmd_sub = rospy.Subscriber("/night_rider/ctrl_cmd", CtrlCmd, self.sub_ctrl_cmd)
-        self.nr_status_pub = rospy.Publisher("/night_rider/status", RecvStatus, queue_size=1)
-        rospy.spin()
+        rate = rospy.Rate(100)
+        while not rospy.is_shutdown():
+            rate.sleep()
+        self.ser.close()
+
 #-----------------------------------------------------------------------
 
 #=======================================================================
     def __init__(self):
-        rospy.init_node("nr_driver", anonymous=True)
+        rospy.init_node("nr_driver")
         self.port = rospy.get_param('~port', '/dev/ttyS0')
         self.baud = rospy.get_param('~baud', 115200)
         self.init_success = False
         self.nr_serial(self.port, self.baud)
-        rate = rospy.Rate(100)
-        while not rospy.is_shutdown():
-            self.main_loop()
-        self.ser.close()
-        rate.sleep()
+        
+        self.nr_cmd_sub = rospy.Subscriber("/night_rider/ctrl_cmd", CtrlCmd, self.sub_ctrl_cmd, queue_size=1)
+        self.nr_status_pub = rospy.Publisher("/night_rider/status", RecvStatus, queue_size=1)
+        
+        #self.main_loop()
+        rospy.spin()
 #-----------------------------------------------------------------------
 if __name__ == "__main__":
     try:

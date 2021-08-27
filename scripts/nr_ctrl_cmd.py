@@ -12,27 +12,29 @@ import rospkg
 import message_filters
 
 debug = 0
-#packet = [0 for i in range(7)]  # creat array for packet
-#cmd_packet = [0 for i in range(7)]  # creat array for packet
-
 
 class nr_serial_test: 
 #=======================================================================
     def cmd_vel_callback(self, ros_cmd_vel) :
-        rospy.loginfo(" ROS CALL BACK RECIVED ")
+        if debug : rospy.loginfo(" ROS CALL BACK RECEIVED ")
         self.cmd_vel_from_ros = ros_cmd_vel
+#-----------------------------------------------------------------------      
         
-    def cmd_vel_to_nr_driver(self, cmd_vel) :
+        
+    def cmd_vel_to_nr_driver(self) :
+        
+        cmd_vel = self.cmd_vel_from_ros
+        #print("----recevied angular.z: ", cmd_vel.angular.z)
         
         if debug :
             rospy.loginfo(" ROS cmd_vel data convertion")
-            print(cmd_vel.angular.z)
+            
         
         # ---- NR controller mode ------
-        cmd_mode = 1  		# set mode to 1 = Auto/computer control (O = manual mode for the black controller)
+        cmd_mode_ = 1  		# set mode to 1 = Auto/computer control (O = manual mode for the black controller)
         
         # ---- NR eStop state ------
-        cmd_e_stop = 0	    # set to zero at all time by the computer estop is seperate system
+        cmd_e_stop_ = 0	    # set to zero at all time by the computer estop is seperate system
         
         # ---- control of NR gears ------
         # To more forward mode need to be "drive"
@@ -40,25 +42,29 @@ class nr_serial_test:
         # safe state is "neutral" where NR will roll if push or under inertia
         # "cmd_vel.linear.x" is being used for both speed and direction to stay in ROS norms
         if cmd_vel.linear.x > 0.01 :
-            cmd_gear = 0 				# Drive
+            cmd_gear_ = 0 				# Drive
         elif cmd_vel.linear.x < -0.01 :
-            cmd_gear = 3				# Reverse
-            cmd_vel.linear.x = not cmd_vel.linear.x
+            cmd_gear_ = 2				# Reverse
         else :
-            cmd_gear = 1				# Neutral
-
+            cmd_gear_ = 1				# Neutral
+            
 		# ---- NR speed  ------
 		# The NR drive use gears to define forward or backwards
 		# The maxium unit to the NR MCU is 1000 units
 		# Maxium speed of current geared NR is 8.2M/s (~30KM)
 		# "scaler_nr_speed" is to match the MCU units to ROS twist m/s velosicty 
-        cmd_speed = int(cmd_vel.linear.x * self.scaler_nr_speed) 	
         
+        cmd_speed_ = 0
+        if cmd_gear_ == 0 :
+            cmd_speed_ = int(cmd_vel.linear.x * self.scaler_nr_speed)
+        elif cmd_gear_ == 2 :
+            cmd_speed_ = int(cmd_vel.linear.x * -self.scaler_nr_speed)
+        #print(cmd_speed_)
         # ---- NR steer  ------
         # As NR is Ackermen, cmd_velangular.z this normalized to 1.0 - 0 for maxium & minium steering (+/-28 deg)
         if cmd_vel.angular.z > 1.0 : cmd_vel.angular.z = 1.0
         if cmd_vel.angular.z <-1.0 : cmd_vel.angular.z = -1.0
-        cmd_steer = int(cmd_vel.angular.z * 2000)
+        cmd_steer_ = int(cmd_vel.angular.z * 2000)
         
         # ---- NR steer  ------
         # As NR is is using negative "cmd_vel.linear.x" for gear and speed
@@ -66,21 +72,22 @@ class nr_serial_test:
         # if cmd_vel.linear.x = 0 and cmd_vel.linear.z = 0 the NR will be in neutral and just roll to a stop.
         if cmd_vel.linear.z > 0.01 :
             if cmd_vel.linear.z > 1 : cmd_vel.linear.z = 1 		# cmd_vel.linear.z normilized to 1.0 - 0 for maxium & minium (100 = full break)
-            cmd_brake = cmd_vel.linear.z * 100
+            cmd_brake_ = cmd_vel.linear.z * 100
         else :
-            cmd_brake = 0
+            cmd_brake_ = 0
+            
         
         # --- Tidy & check data ---
-        if cmd_speed > 1000 : cmd_speed = 1000
-        if cmd_speed < 0 : cmd_speed = 0
-        if cmd_steer > 2000 : cmd_steer = 2000
-        if cmd_steer < -2000: cmd_steer = -2000
-        if cmd_brake > 100 : cmd_brake = 100
-        if cmd_brake < 0: cmd_brake = 0
+        if cmd_speed_ > 1000 : cmd_speed_ = 1000
+        if cmd_speed_ < 0 : cmd_speed_ = 0
+        if cmd_steer_ > 2000 : cmd_steer_ = 2000
+        if cmd_steer_ < -2000: cmd_steer_ = -2000
+        if cmd_brake_ > 100 : cmd_brake_ = 100
+        if cmd_brake_ <= 0 : cmd_brake_ = 0
         
         #print("------- mode: ", cmd_mode, "  stop: ", cmd_e_stop, "  gear: ", cmd_gear, "  speed: ", cmd_speed, "  steer ", cmd_steer, "  brake: ", cmd_brake)
 
-        packet = [cmd_mode, cmd_e_stop, cmd_gear, cmd_speed, cmd_steer, cmd_brake]
+        packet = [cmd_mode_, cmd_e_stop_, cmd_gear_, cmd_speed_, cmd_steer_, cmd_brake_]
         
         return packet
 #-----------------------------------------------------------------------
@@ -141,17 +148,19 @@ class nr_serial_test:
 
 #=======================================================================
     def main_loop(self, serial_msg_hz) :
+        rospy.init_node("nr_cmd", anonymous=True)
         
-        print(serial_msg_hz)
+        cmd_packet = [0 for i in range(6)]     
         
-        rate = rospy.Rate(30)
+        #rate = rospy.Rate(serial_msg_hz)
+        rate = rospy.Rate(500)
         t_offset = time.time()
 
         self.alive = 0
         while not rospy.is_shutdown(): 
            t = time.time() - t_offset
                 
-           cmd_packet = self.cmd_vel_to_nr_driver(self.cmd_vel_from_ros)
+           cmd_packet = self.cmd_vel_to_nr_driver()
                 
            self.pub_cmd(
                 serial_msg_hz,
@@ -166,31 +175,31 @@ class nr_serial_test:
            self.alive = self.alive + 1
            
            # print(" time now: ", t)
-           if self.alive == 254:
-               self.alive = 1
+           if self.alive == 256:
+               self.alive = 0
                # print("----------- Alive reset -- time now: ", t)
+               
            rate.sleep()
 #----------------------------------------------------------------------- 
 
 #=======================================================================
     def __init__(self):
-        #self.test_case = test_case()
-        rospy.init_node("nr_cmd", anonymous=True)
-        self.serial_msg_hz = rospy.get_param('~serial_msg_hz', 0.1)
-        self.scaler_nr_speed = rospy.get_param('~speed_scaler', 125)  	# 1000 / Max speed(8.2m/s) 
         
-        self.cmd_vel_msg = Twist()
-        self.cmd_vel_from_ros = Twist()
+        self.serial_msg_hz = rospy.get_param('~serial_msg_hz', 50)
+        self.scaler_nr_speed = rospy.get_param('~speed_scaler', 225)  	# 1000 / Max speed(5m/s)  
+        
+        self.cmd_vel_from_ros = Twist() 
         
         self.nr_cmd_pub = rospy.Publisher("/night_rider/ctrl_cmd", CtrlCmd, queue_size=1)
-        self.nr_cmd_vel_sub = rospy.Subscriber("/night_rider/cmd_vel", Twist, self.cmd_vel_callback)
+        self.nr_cmd_vel_sub = rospy.Subscriber("/night_rider/cmd_vel", Twist, self.cmd_vel_callback, queue_size=1)
         self.nr_status_sub = rospy.Subscriber("/night_rider/recv_status", RecvStatus, self.sub_recv_status)
+        
         self.main_loop(self.serial_msg_hz)
 #-----------------------------------------------------------------------    
 
 if __name__ == "__main__":
-    try:
-        tester = nr_serial_test()
-            
-    except rospy.ROSInterruptException:
-        pass
+     try:
+         nr_serial_test()
+     except rospy.ROSInterruptException:
+         pass
+ 
