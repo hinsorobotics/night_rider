@@ -13,7 +13,7 @@ import message_filters
 
 debug = 0
 
-class nr_serial_test: 
+class nr_ctrl_cmd: 
 #=======================================================================
     def cmd_vel_callback(self, ros_cmd_vel) :
         if debug : rospy.loginfo(" ROS CALL BACK RECEIVED ")
@@ -148,7 +148,6 @@ class nr_serial_test:
 
 #=======================================================================
     def main_loop(self, serial_msg_hz) :
-        rospy.init_node("nr_cmd", anonymous=True)
         
         cmd_packet = [0 for i in range(6)]     
         
@@ -185,6 +184,8 @@ class nr_serial_test:
 #=======================================================================
     def __init__(self):
         
+        rospy.init_node("nr_cmd", anonymous=True)
+        
         self.serial_msg_hz = rospy.get_param('~serial_msg_hz', 50)
         self.scaler_nr_speed = rospy.get_param('~speed_scaler', 225)  	# 1000 / Max speed(5m/s)  
         
@@ -199,7 +200,7 @@ class nr_serial_test:
 
 if __name__ == "__main__":
      try:
-         nr_serial_test()
+         nr_ctrl_cmd()
      except rospy.ROSInterruptException:
          pass
  
