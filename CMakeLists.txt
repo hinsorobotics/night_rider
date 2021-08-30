@@ -54,6 +54,7 @@ add_message_files(
   FILES 
   CtrlCmd.msg
   RecvStatus.msg
+  LedCmd.msg
 )
 
 ## Generate services in the 'srv' folder
