@@ -47,7 +47,8 @@ class hri_controller_to_nr:
 		# the direction of travel via turning (right or left)
 		# "joy" is normiziled to -1~0~1, for NR platform the maxium
 		# angle of steering is 28 deg. (nr_ctrl_cmd.py has the scaler) 
-		twist.angular.z = data.axes[2] 
+		# Inverted "data.axes" as the pos and neg numbers are oppersite in ROS TF
+		twist.angular.z = -data.axes[2] 
 		
 		
 		

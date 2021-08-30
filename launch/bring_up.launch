@@ -1,0 +1,13 @@
+<launch>
+	<node pkg="night_rider" type="nr_driver.py" name="nr_driver" output="screen" />
+	<node pkg="night_rider" type="nr_ctrl_cmd.py" name="nr_ctrl_cmd" output="screen" />
+	<node pkg="night_rider" type="led_control.py" name="nr_led" output="screen" />
+	
+	<node pkg="hri_safety_sense" type="hri_safety_sense_node" name="hri_safety_sense_node">
+    <param name="vsc_port" value="/dev/ttyACM0" />
+    <param name="baud_rate" value="115200" />
+    <param name="vsc_rate" value="50" />
+    </node>
+	
+	<node pkg="night_rider" type="hri_controller_to_nr.py" name="hri_controller_to_nr" output="screen" />
+</launch>

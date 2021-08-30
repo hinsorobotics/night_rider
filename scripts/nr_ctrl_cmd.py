@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#-------------- nr_ctrl_cmd.py -----------------------------------------------------------
+# Arthor: Arron Griffiths | Company: Indro Robotics | Location: Ottawa, ON, Canada
+# Contact: agriffiths@indrorobotics.com  
+# Info: This is a simple python ros node that Subs to "/night_rider/CtrlCmd" and converts them to the 
+#      serial MCU packages that is required by the MCU that controlls the motor driver
+#---------------------------------------------------------------------------------------------------
+
 import os
 import struct
 import time

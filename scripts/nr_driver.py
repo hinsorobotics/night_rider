@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#-------------- nr_driver.py -----------------------------------------------------------
+# Arthor: Arron Griffiths | Company: Indro Robotics | Location: Ottawa, ON, Canada
+# Contact: agriffiths@indrorobotics.com  
+# Info: This is a simple python ros node that Subs to "/cmd_vel" and converts that to "/night_rider/CtrlCmd"
+#       to ensure the ROS style of commincation is correctly converted to the serial commands
+#---------------------------------------------------------------------------------------------------
+
+
 from std_msgs.msg import String, UInt8, Int16
 from night_rider.msg import CtrlCmd, RecvStatus
 import rospy
